@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Target et Features</title>
+    </head>
+
+    <body>
+        <h2>Choisissez les colonnes</h2>
+
+        <form method = "post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Suivant</button>
+        </form>
+
+        <h3>Prévisualisation du dataset</h3>
+        {{ table|safe }}
+
+
+    </body>
+</html>

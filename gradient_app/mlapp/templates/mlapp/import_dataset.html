@@ -1,0 +1,202 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>SmartPredict</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #fff;
+            padding: 20px 60px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        header .logo {
+            font-weight: bold;
+            font-size: 24px;
+            color: #333;
+        }
+
+        nav a {
+            margin: 0 15px;
+            text-decoration: none;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 60px;
+            gap: 40px;
+        }
+
+        .text-section {
+            max-width: 500px;
+        }
+
+        .text-section h1 {
+            font-size: 36px;
+            color: #333;
+        }
+
+        .text-section p {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .btn-learn {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background-color: #ff4d5a;
+            border: none;
+            border-radius: 25px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        #fileName {
+            margin-top: 10px;
+            color: #333;
+        }
+
+        .image-section img {
+            max-width: 550px;
+            height: auto;
+            border-radius: 10px;
+        }
+
+        .preview {
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Barre de navigation -->
+    <header>
+        <div class="logo">SmartPredict</div>
+        <nav>
+            <a href="#">Guide</a>
+        </nav>
+    </header>
+
+    <!-- Contenu principal -->
+    <div class="container">
+        <!-- Section de gauche -->
+        <div class="text-section">
+            <h1>Anticipez les prix avec la puissance du Machine Learning</h1>
+            <p>
+                <strong>SmartPredict</strong> est une application web intuitive qui vous permet d'importer facilement
+                vos fichiers CSV, de visualiser vos données et de tester des modèles de machine learning sans écrire une
+                seule ligne de code.
+            </p>
+            <p>
+                Grâce à une interface claire et moderne, vous pouvez charger vos jeux de données, explorer les colonnes,
+                et entraîner automatiquement des modèles pour des tâches comme la classification ou la régression.
+            </p>
+            <p>
+                Que vous soyez débutant ou expérimenté, SmartPredict vous aide à prototyper vos projets de data science
+                en quelques clics.
+            </p>
+
+            <!-- Bouton d'import -->
+            <button type="button" class="btn-learn" onclick="document.getElementById('fileInput').click();">
+                Importer un dataset
+            </button>
+
+            <!-- Input de fichier caché -->
+            <input type="file" id="fileInput" accept=".csv" onchange="loadCSV(event)">
+
+            <!-- Nom du fichier -->
+            <p id="fileName"></p>
+
+            <!-- Affichage du tableau -->
+            <div id="csvOutput" class="preview"></div>
+        </div>
+
+        <!-- Section image -->
+        <div class="image-section">
+            <img src="{% static 'images/image2.png' %}" alt="Illustration SmartPredict">
+        </div>
+    </div>
+
+    <!-- Script JS pour affichage CSV -->
+    <script>
+        function loadCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('fileName').innerText = file.name;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const text = e.target.result;
+                displayCSV(text);
+            };
+            reader.readAsText(file);
+        }
+
+        function displayCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const table = document.createElement('table');
+
+            lines.forEach((line, index) => {
+                const row = document.createElement('tr');
+                const cells = line.split(',');
+
+                cells.forEach(cell => {
+                    const cellElement = index === 0 ? document.createElement('th') : document.createElement('td');
+                    cellElement.textContent = cell;
+                    row.appendChild(cellElement);
+                });
+
+                table.appendChild(row);
+            });
+
+            const output = document.getElementById('csvOutput');
+            output.innerHTML = '';
+            output.appendChild(table);
+        }
+    </script>
+
+</body>
+
+</html>

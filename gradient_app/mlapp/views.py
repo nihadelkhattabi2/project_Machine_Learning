@@ -2,6 +2,11 @@ import pandas as pd
 from django.shortcuts import render, redirect
 from .forms import FeatureSelectionForm
 
+
+def import_dataset(request):
+    return render(request, 'mlapp/import_dataset.html')  # Ce chemin est correct
+
+
 def select_features(request):
     df = pd.read_csv("media/housingCalifornia.csv")
     columns = df.columns.tolist()

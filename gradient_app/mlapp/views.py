@@ -33,3 +33,15 @@ def select_features(request):
         'form': form,
         'table': df.head().to_html(classes='table table-striped')
     })
+def predict(request):
+    prediction = None
+    if request.method == 'POST':
+        # récupération des données du formulaire
+        val1 = float(request.POST.get('val1'))
+        val2 = float(request.POST.get('val2'))
+        # ... add plus de valeurs si besoin
+
+        # ici tu fais une prédiction avec un modèle (exemple simple)
+        prediction = val1 + val2  # juste un exemple
+
+    return render(request, 'mlapp/predict.html', {'prediction': prediction})

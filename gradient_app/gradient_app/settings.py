@@ -67,6 +67,9 @@ TEMPLATES = [
     },
 ]
 
+
+
+
 WSGI_APPLICATION = 'gradient_app.wsgi.application'
 
 

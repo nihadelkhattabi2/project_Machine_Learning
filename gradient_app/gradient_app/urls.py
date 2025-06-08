@@ -22,6 +22,8 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('mlapp.urls')),  # ← pour diriger vers les vues de mlapp
+    
+
 ]
 
 # Pour servir les fichiers médias (datasets uploadés) en mode développement

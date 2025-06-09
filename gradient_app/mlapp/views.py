@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from django.shortcuts import render, redirect
 from .forms import FeatureSelectionForm
 
@@ -38,15 +39,27 @@ def select_features(request):
         'form': form,
         'table': df.head().to_html(classes='table table-striped')
     })
-def predict(request):
+
+
+def predict_view(request):
     prediction = None
+
     if request.method == 'POST':
-        # récupération des données du formulaire
-        val1 = float(request.POST.get('val1'))
-        val2 = float(request.POST.get('val2'))
-        # ... add plus de valeurs si besoin
+        f1 = float(request.POST.get('feature1', 0))
+        f2 = float(request.POST.get('feature2', 0))
+        f3 = float(request.POST.get('feature3', 0))
 
-        # ici tu fais une prédiction avec un modèle (exemple simple)
-        prediction = val1 + val2  # juste un exemple
+        # exemple simple
+        X = np.array([[f1, f2, f3]])
 
-    return render(request, 'mlapp/predict.html', {'prediction': prediction})
+        prediction = round((f1 + f2 + f3) / 3, 2)
+
+        return render(request, 'mlapp/predict.html', {'prediction': prediction})
+
+def configure_model_view(request):
+    if request.method == 'POST':
+        task_type = request.POST.get('task_type')
+        if task_type in ['regression', 'classification']:
+            request.session['task_type'] = task_type
+            return redirect('predict')  # Redirection vers la page de prédiction
+    return render(request, 'mlapp/configure_model.html')

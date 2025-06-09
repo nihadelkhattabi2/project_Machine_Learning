@@ -20,3 +20,7 @@ class FeatureSelectionForm(forms.Form):
         else:
             self.fields['features'].choices = [(col, col) for col in columns]
 
+class PredictionForm(forms.Form):
+    feature1 = forms.FloatField(label='Feature 1', required=True)
+    feature2 = forms.FloatField(label='Feature 2', required=True)
+    feature3 = forms.FloatField(label='Feature 3', required=True)

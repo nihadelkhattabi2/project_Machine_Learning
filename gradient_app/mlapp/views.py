@@ -116,19 +116,24 @@ def select_features(request):
 
 
 def predict_view(request):
-    prediction = None
+    prediction = None  # Initialisation de la variable prédiction
 
     if request.method == 'POST':
-        f1 = float(request.POST.get('feature1', 0))
-        f2 = float(request.POST.get('feature2', 0))
-        f3 = float(request.POST.get('feature3', 0))
+        try:
+            # Récupération des valeurs envoyées par le formulaire
+            f1 = float(request.POST.get('feature1', 0))
+            f2 = float(request.POST.get('feature2', 0))
+            f3 = float(request.POST.get('feature3', 0))
 
-        # exemple simple
-        X = np.array([[f1, f2, f3]])
+            # Exemple simple de prédiction : moyenne des trois valeurs
+            X = np.array([[f1, f2, f3]])
+            prediction = round((f1 + f2 + f3) / 3, 2)
+        except:
+            # En cas d'erreur (valeur non numérique par exemple)
+            prediction = "Erreur lors de la saisie des valeurs."
 
-        prediction = round((f1 + f2 + f3) / 3, 2)
-
-        return render(request, 'mlapp/predict.html', {'prediction': prediction})
+    # Que la méthode soit GET ou POST, on retourne toujours la page HTML
+    return render(request, 'mlapp/predict.html', {'prediction': prediction})
 
 def configure_model_view(request):
     if request.method == 'POST':

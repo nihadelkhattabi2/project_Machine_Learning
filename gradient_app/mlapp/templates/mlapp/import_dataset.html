@@ -6,7 +6,6 @@
 <head>
     <meta charset="UTF-8">
     <title>SmartPredict</title>
-
     <style>
         body {
             margin: 0;
@@ -114,8 +113,12 @@
     <header>
         <div class="logo">SmartPredict</div>
         <nav>
+            <a href="{% url 'correlation_view' %}">Matrice de corrélation & Heatmap</a>
+            <a href="{% url 'afficher_correlation_target' %}">Corrélation avec la colonne cible</a>
+            <a href="#">Guide</a>
             <a href="#">Guide</a>
         </nav>
+
     </header>
 
     <!-- Contenu principal -->
@@ -137,65 +140,38 @@
                 en quelques clics.
             </p>
 
-            <!-- Bouton d'import -->
-            <button type="button" class="btn-learn" onclick="document.getElementById('fileInput').click();">
-                Importer un dataset
-            </button>
-
-            <!-- Input de fichier caché -->
-            <input type="file" id="fileInput" accept=".csv" onchange="loadCSV(event)">
+            <!-- Formulaire d'import -->
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <button type="button" class="btn-learn" onclick="document.getElementById('fileInput').click();">
+                    Importer un dataset
+                </button>
+                <input type="file" id="fileInput" name="dataset_file" accept=".csv" onchange="this.form.submit();">
+            </form>
 
             <!-- Nom du fichier -->
-            <p id="fileName"></p>
+            {% if filename %}
+            <p id="fileName">{{ filename }}</p>
+            {% endif %}
 
-            <!-- Affichage du tableau -->
-            <div id="csvOutput" class="preview"></div>
+            <!-- Affichage du dataset prétraité -->
+            {% if dataset_preview %}
+            <h2>Aperçu du dataset :</h2>
+            <div class="preview">
+                {{ dataset_preview|safe }}
+            </div>
+            {% endif %}
         </div>
+
 
         <!-- Section image -->
         <div class="image-section">
             <img src="{% static 'images/image2.png' %}" alt="Illustration SmartPredict">
         </div>
+
+
+
     </div>
-
-    <!-- Script JS pour affichage CSV -->
-    <script>
-        function loadCSV(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            document.getElementById('fileName').innerText = file.name;
-
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const text = e.target.result;
-                displayCSV(text);
-            };
-            reader.readAsText(file);
-        }
-
-        function displayCSV(csvText) {
-            const lines = csvText.trim().split('\n');
-            const table = document.createElement('table');
-
-            lines.forEach((line, index) => {
-                const row = document.createElement('tr');
-                const cells = line.split(',');
-
-                cells.forEach(cell => {
-                    const cellElement = index === 0 ? document.createElement('th') : document.createElement('td');
-                    cellElement.textContent = cell;
-                    row.appendChild(cellElement);
-                });
-
-                table.appendChild(row);
-            });
-
-            const output = document.getElementById('csvOutput');
-            output.innerHTML = '';
-            output.appendChild(table);
-        }
-    </script>
 
 </body>
 

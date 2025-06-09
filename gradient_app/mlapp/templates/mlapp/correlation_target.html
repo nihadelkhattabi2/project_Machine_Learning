@@ -1,0 +1,15 @@
+<form method="post">
+    {% csrf_token %}
+    <label for="target_col">Sélectionnez la colonne cible :</label>
+    <select name="target_col" id="target_col">
+        {% for col in columns %}
+        <option value="{{ col }}">{{ col }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Afficher</button>
+</form>
+
+{% if image_uri %}
+<h3>Matrice de corrélation avec : {{ target }}</h3>
+<img src="data:image/png;base64,{{ image_uri }}" alt="Correlation Target">
+{% endif %}

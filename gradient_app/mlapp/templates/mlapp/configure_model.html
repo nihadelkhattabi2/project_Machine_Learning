@@ -1,70 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Configurer le Modèle</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f2f5;
-      padding: 40px;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <title>Configurer le Modèle</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f0f2f5;
+        padding: 40px;
+      }
 
-    .container {
-      max-width: 500px;
-      margin: auto;
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
+      .container {
+        max-width: 500px;
+        margin: auto;
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
 
-    h2 {
-      text-align: center;
-      margin-bottom: 20px;
-      color: #333;
-    }
+      h2 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+      }
 
-    label {
-      display: block;
-      margin: 15px 0 5px;
-    }
+      label {
+        display: block;
+        margin: 15px 0 5px;
+        font-weight: bold;
+      }
 
-    select, button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 5px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      font-size: 16px;
-    }
+      select,
+      input,
+      button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 16px;
+      }
 
-    button {
-      margin-top: 20px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
+      button {
+        margin-top: 20px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
 
-    button:hover {
-      background-color: #0056b3;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h2>Configurer le Modèle</h2>
-    <form method="post">
-      {% csrf_token %}
-      <label for="task_type">Type d'apprentissage :</label>
-      <select name="task_type" id="task_type" required>
-        <option value="">-- Choisir --</option>
-        <option value="regression">Régression</option>
-        <option value="classification">Classification</option>
-      </select>
-      <button type="submit">Continuer</button>
-    </form>
-  </div>
-</body>
+      button:hover {
+        background-color: #218838;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Configurer le Modèle</h2>
+      <form method="post">
+        {% csrf_token %}
+
+        <!-- Choix du type d'apprentissage -->
+        <label for="task_type">Type d'apprentissage :</label>
+        <select name="task_type" id="task_type" required>
+          <option value="">-- Choisir --</option>
+          <option value="regression">Régression</option>
+          <option value="classification">Classification</option>
+        </select>
+
+        <!-- Paramètre alpha -->
+        <label for="alpha">Taux d’apprentissage (α) :</label>
+        <input
+          type="number"
+          step="0.001"
+          min="0"
+          name="alpha"
+          id="alpha"
+          value="0.01"
+          required
+        />
+
+        <!-- Nombre d’itérations -->
+        <label for="iterations">Nombre d’itérations :</label>
+        <input
+          type="number"
+          min="1"
+          name="iterations"
+          id="iterations"
+          value="1000"
+          required
+        />
+
+        <!-- Bouton d'entraînement -->
+        <button type="submit">Lancer l'entraînement</button>
+      </form>
+    </div>
+  </body>
 </html>

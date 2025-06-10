@@ -1,3 +1,5 @@
+import uuid
+from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
 from django.shortcuts import render, redirect
@@ -114,6 +116,58 @@ def select_features(request):
         'table': df.head().to_html(classes='table table-striped')
     })
 
+def configure_model_view(request):
+    if request.method == 'POST':
+        task_type = request.POST.get('task_type')
+        if task_type in ['regression', 'classification']:
+            request.session['task_type'] = task_type
+            return redirect('predict')  # Redirection vers la page de prédiction
+    return render(request, 'mlapp/configure_model.html')
+
+def train_model(request):
+    df = pd.read_json(request.session['preprocessed_dataset'])
+    features = request.session['features']
+    target = request.session['target']
+
+    X = df[features].values
+    y = df[target].values
+
+    alpha = float(request.POST.get('alpha', 0.01))
+    iterations = int(request.POST.get('iterations', 1000))
+
+    m, n = X.shape
+    X_b = np.c_[np.ones((m, 1)), X]
+    theta = np.zeros(n + 1)
+
+    cost_history = []
+
+    for _ in range(iterations):
+        gradients = 2/m * X_b.T.dot(X_b.dot(theta) - y)
+        theta -= alpha * gradients
+        cost = ((X_b.dot(theta) - y)**2).mean()
+        cost_history.append(cost)
+
+    # Génération de la courbe d'apprentissage
+    fig, ax = plt.subplots()
+    ax.plot(range(iterations), cost_history, label='Coût')
+    ax.set_xlabel('Itérations')
+    ax.set_ylabel('Coût (Erreur)')
+    ax.set_title('Courbe d’apprentissage (Gradient Descent)')
+    ax.legend()
+
+    # Sauvegarde dans le dossier static/
+    filename = f"{uuid.uuid4().hex}.png"
+    path = os.path.join(settings.BASE_DIR, 'mlapp/static/plots', filename)
+    plt.savefig(path)
+    plt.close()
+
+    request.session['plot_filename'] = filename
+
+    return render(request, 'mlapp/train_model.html', {
+        'theta': theta,
+        'cost': round(cost_history[-1], 4),
+        'plot_image': f"plots/{filename}",
+    })
 
 def predict_view(request):
     prediction = None  # Initialisation de la variable prédiction
@@ -135,10 +189,3 @@ def predict_view(request):
     # Que la méthode soit GET ou POST, on retourne toujours la page HTML
     return render(request, 'mlapp/predict.html', {'prediction': prediction})
 
-def configure_model_view(request):
-    if request.method == 'POST':
-        task_type = request.POST.get('task_type')
-        if task_type in ['regression', 'classification']:
-            request.session['task_type'] = task_type
-            return redirect('predict')  # Redirection vers la page de prédiction
-    return render(request, 'mlapp/configure_model.html')

@@ -2,6 +2,10 @@ import base64
 import io
 from django.shortcuts import render
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import base64
+
 
 
 def remplir_valeurs_vides(df):
@@ -51,90 +55,67 @@ def one_hot_encode(df, verbose=False):
         return df
     
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-import pandas as pd
-import io
-import base64
 
-def correlation_avec_cible(df, target_col):
+def generate_correlation_heatmap(file_path, verbose=True):
     """
-    Calcule et retourne un graphique de corrélation avec la colonne cible.
-
+    Charge un dataset CSV, le prétraite,
+    puis génère une heatmap de corrélation et renvoie l'image en base64.
+    
     Args:
-        df (pd.DataFrame): Le DataFrame.
-        target_col (str): La colonne cible.
+        file_path (str): chemin vers le fichier CSV.
+        verbose (bool): affiche des infos pendant le traitement.
 
     Returns:
-        str: Image du graphique en base64.
+        str: image PNG encodée en base64, ou None en cas d'erreur.
     """
-    if target_col not in df.columns:
-        raise ValueError("La colonne cible n'existe pas dans le DataFrame")
+    try:
+        # Chargement du dataset
+        df = pd.read_csv(file_path)
 
-    numeric_df = df.select_dtypes(include=['int64', 'float64'])
 
-    if target_col not in numeric_df.columns:
-        raise ValueError("La colonne cible doit être numérique pour le calcul de la corrélation")
+        # Prétraitement (fonctions à définir ailleurs)
+        df = remplir_valeurs_vides(df)
+        df = supprimer_doublons(df)
+        df = one_hot_encode(df, verbose=verbose)
 
-    corr_series = numeric_df.corr()[target_col].drop(target_col).sort_values(ascending=False)
 
-    # Tracer le graphique
-    plt.figure(figsize=(10, 5))
-    sns.barplot(x=corr_series.values, y=corr_series.index, palette='viridis')
-    plt.title(f"Corrélation avec la cible : {target_col}")
-    plt.xlabel("Coefficient de corrélation")
 
-    # Convertir l’image en base64
-    buffer = io.BytesIO()
-    plt.tight_layout()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-    image_png = buffer.getvalue()
-    graphique = base64.b64encode(image_png).decode('utf-8')
-    buffer.close()
-    plt.close()
+        # Garder que les colonnes numériques pour corrélation
+        numeric_df = df.select_dtypes(include=['number'])
 
-    return graphique
+        # Calcul de la matrice de corrélation
+        corr = numeric_df.corr()
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-def afficher_correlation_avec_target(df, verbose=True):
-    """
-    Affiche la corrélation entre les colonnes numériques et la colonne cible probable (prix, charges, valeur).
-    """
-    # Essayer d'identifier automatiquement une colonne cible probable
-    possible_targets = ['prix', 'valeur', 'charges', 'target']
-    target_col = None
-
-    for col in df.columns:
-        if col.lower() in possible_targets:
-            target_col = col
-            break
-
-    if not target_col:
-        print("❌ Aucune colonne cible identifiée automatiquement (ex: prix, valeur, charges).")
-        print("Corrélation globale sera affichée.")
-        correlation_matrix = df.corr(numeric_only=True)
+        # Génération de la heatmap
         plt.figure(figsize=(10, 8))
-        sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
-        plt.title("Matrice de corrélation")
-        plt.show()
-        return
+        sns.heatmap(corr, annot=True, fmt=".2f", cmap='coolwarm', linewidths=0.5)
+        plt.title('Matrice de corrélation')
+        plt.tight_layout()
 
-    if verbose:
-        print(f"✅ Colonne cible détectée : {target_col}")
+        # Sauvegarde dans un buffer en PNG
+        buffer = io.BytesIO()
+        plt.savefig(buffer, format='png')
+        buffer.seek(0)
+        image_png = buffer.getvalue()
+        buffer.close()
+        plt.close()
 
-    # Calcul des corrélations avec la cible
-    corr_target = df.corr(numeric_only=True)[target_col].drop(target_col).sort_values(ascending=False)
+        # Encodage base64
+        graphic = base64.b64encode(image_png).decode('utf-8')
+        return graphic
 
-    # Affichage en heatmap
-    plt.figure(figsize=(6, len(corr_target) * 0.5 + 1))
-    sns.heatmap(corr_target.to_frame(), annot=True, cmap='coolwarm')
-    plt.title(f"Corrélation avec {target_col}")
-    plt.show()
+    except Exception as e:
+        print(f"❌ Erreur : {e}")
+        return None
 
 
+
+
+
+def min_max_normalisation(df):
+    numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns
+    df[numeric_cols] = (df[numeric_cols] - df[numeric_cols].min()) / (df[numeric_cols].max() - df[numeric_cols].min())
+    return df
 
 
 def preprocess_dataset(file_path, verbose=True):
@@ -156,11 +137,12 @@ def preprocess_dataset(file_path, verbose=True):
         df = remplir_valeurs_vides(df)
         df = supprimer_doublons(df)
         df = one_hot_encode(df, verbose=verbose)
-
+        
+        df = min_max_normalisation(df)  #  normalisation des _features
         
 
 
-        afficher_correlation_avec_target(df, verbose=True)
+       # afficher_correlation_avec_target(df, verbose=True)
 
         if verbose:
             print(f"Forme finale : {df.shape}")
@@ -170,3 +152,45 @@ def preprocess_dataset(file_path, verbose=True):
     except Exception as e:
         print(f"❌ Erreur pendant le prétraitement : {e}")
         return None
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    from sklearn.model_selection import train_test_split
+
+def split_dataset(dataset, target_column='target', train_size=0.7, random_state=0):
+    """
+    Divise un dataset en features (X) et target (y), puis en ensembles d'entraînement et de test.
+    
+    Args:
+        dataset (pandas.DataFrame): Le dataset complet.
+        target_column (str): Le nom de la colonne cible (target).
+        train_size (float): La proportion du jeu d'entraînement (ex: 0.7 pour 70%).
+        random_state (int): Graine pour la reproductibilité.
+    
+    Returns:
+        X_train, X_test, y_train, y_test : Les jeux de données divisés.
+    """
+    X = dataset.drop(columns=target_column)
+    y = dataset[target_column]
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, train_size=train_size, random_state=random_state
+    )
+    return X_train, X_test, y_train, y_test

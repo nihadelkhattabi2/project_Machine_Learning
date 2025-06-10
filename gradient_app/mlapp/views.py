@@ -9,7 +9,7 @@ from django.conf import settings
 from django.utils.html import escape
 import json
 
-from .preprocessing import preprocess_dataset  # <- si ta fonction est dans un fichier utils.py
+from .preprocessing import generate_correlation_heatmap, preprocess_dataset  # <- si ta fonction est dans un fichier utils.py
 # ou bien, tu l'appelles localement si elle est dans views.py
 
 def import_dataset(request):
@@ -38,50 +38,65 @@ def import_dataset(request):
         'filename': filename,
     })
 
+from django.shortcuts import render
+import pandas as pd
+
 def correlation_view(request):
-    df = get_last_uploaded_dataset()  # Charge ton DataFrame déjà importé
-    fig = plot_correlation_heatmap(df)
-    image_uri = fig_to_base64(fig)
-    return render(request, 'correlation.html', {'image_uri': image_uri})
+    # Exemple : charger un dataset (à adapter à ton cas)
+    file_path = 'chemin/vers/ton_dataset.csv'
+    df = preprocess_dataset(file_path, verbose=False)  # ta fonction de prétraitement
 
-def afficher_correlation_target(request):
-    df = get_last_uploaded_dataset()
-    columns = df.select_dtypes(include='number').columns.tolist()
+    if df is None:
+        return render(request, 'mlapp/error.html', {'message': 'Erreur chargement dataset'})
 
-    if request.method == 'POST':
-        target = request.POST.get('target_col')
-        fig = plot_correlation_with_target(df, target)
-        image_uri = fig_to_base64(fig)
-        return render(request, 'correlation_target.html', {
-            'image_uri': image_uri,
-            'target': target,
-            'columns': columns
-        })
+    heatmap_img = generate_correlation_heatmap(df)
 
-    return render(request, 'correlation_target.html', {'columns': columns})
+    return render(request, 'mlapp/correlation.html', {'heatmap': heatmap_img})
 
 
-def afficher_correlation_target(request):
-    df_json = request.session.get('dataset', None)
-    if not df_json:
-        return render(request, 'mlapp/error.html', {'message': 'Aucun dataset trouvé.'})
+    # df = get_last_uploaded_dataset()  # Charge ton DataFrame déjà importé
+    # fig = plot_correlation_heatmap(df)
+    # image_uri = fig_to_base64(fig)
+    # return render(request, 'correlation.html', {'image_uri': image_uri})
 
-    df = pd.read_json(df_json)
+# def afficher_correlation_target(request):
+#     df = get_last_uploaded_dataset()
+#     columns = df.select_dtypes(include='number').columns.tolist()
 
-    if request.method == 'POST':
-        target = request.POST.get('target_col')
+#     if request.method == 'POST':
+#         target = request.POST.get('target_col')
+#         fig = plot_correlation_with_target(df, target)
+#         image_uri = fig_to_base64(fig)
+#         return render(request, 'correlation_target.html', {
+#             'image_uri': image_uri,
+#             'target': target,
+#             'columns': columns
+#         })
 
-        try:
-            graphique = correlation_avec_cible(df, target)
-            return render(request, 'mlapp/correlation_target.html', {
-                'graphique': graphique,
-                'target': target
-            })
-        except Exception as e:
-            return render(request, 'mlapp/error.html', {'message': str(e)})
+#     return render(request, 'correlation_target.html', {'columns': columns})
 
-    columns = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
-    return render(request, 'mlapp/import_dataset.html', {'columns': columns})
+
+# def afficher_correlation_target(request):
+#     df_json = request.session.get('dataset', None)
+#     if not df_json:
+#         return render(request, 'mlapp/error.html', {'message': 'Aucun dataset trouvé.'})
+
+#     df = pd.read_json(df_json)
+
+#     if request.method == 'POST':
+#         target = request.POST.get('target_col')
+
+#         try:
+#             graphique = correlation_avec_cible(df, target)
+#             return render(request, 'mlapp/correlation_target.html', {
+#                 'graphique': graphique,
+#                 'target': target
+#             })
+#         except Exception as e:
+#             return render(request, 'mlapp/error.html', {'message': str(e)})
+
+#     columns = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+#     return render(request, 'mlapp/import_dataset.html', {'columns': columns})
 
 
 def select_features(request):
@@ -116,59 +131,103 @@ def select_features(request):
         'table': df.head().to_html(classes='table table-striped')
     })
 
+from django.shortcuts import render, redirect
+from django.contrib import messages  # pour afficher les erreurs
+
 def configure_model_view(request):
     if request.method == 'POST':
-        task_type = request.POST.get('task_type')
-        if task_type in ['regression', 'classification']:
-            request.session['task_type'] = task_type
-            return redirect('predict')  # Redirection vers la page de prédiction
+        task_type = request.POST.get('task_type')       # récupère le choix régression ou classification
+        alpha = request.POST.get('alpha')               # récupère alpha
+        iterations = request.POST.get('iterations')     # récupère le nombre d’itérations
+
+        # Vérifie que le choix est valide
+        if task_type not in ['regression', 'classification']:
+            messages.error(request, "Choisis un type d’apprentissage valide.")
+            return render(request, 'mlapp/configure_model.html')
+
+        # Vérifie que alpha est un nombre positif
+        try:
+            alpha = float(alpha)
+            if alpha <= 0:
+                raise ValueError()
+        except:
+            messages.error(request, "Le taux d’apprentissage doit être un nombre positif.")
+            return render(request, 'mlapp/configure_model.html')
+
+        # Vérifie que iterations est un entier >= 1
+        try:
+            iterations = int(iterations)
+            if iterations < 1:
+                raise ValueError()
+        except:
+            messages.error(request, "Le nombre d’itérations doit être un entier positif.")
+            return render(request, 'mlapp/configure_model.html')
+
+        # Tout est OK : on stocke dans la session
+        request.session['task_type'] = task_type
+        request.session['alpha'] = alpha
+        request.session['iterations'] = iterations
+
+        # Puis on redirige vers la page d’entraînement
+        return redirect('train_model')
+
+    # Si méthode GET, on affiche juste le formulaire
     return render(request, 'mlapp/configure_model.html')
 
 def train_model(request):
-    df = pd.read_json(request.session['preprocessed_dataset'])
-    features = request.session['features']
-    target = request.session['target']
+    if request.method == 'POST':
+        # Récupération du dataset prétraité en JSON dans la session
+        df = pd.read_json(request.session.get('preprocessed_dataset'))
+        features = request.session.get('features')
+        target = request.session.get('target')
 
-    X = df[features].values
-    y = df[target].values
+        # Extraction des variables
+        X = df[features].values
+        y = df[target].values
 
-    alpha = float(request.POST.get('alpha', 0.01))
-    iterations = int(request.POST.get('iterations', 1000))
+        # Paramètres du modèle
+        alpha = float(request.POST.get('alpha', 0.01))
+        iterations = int(request.POST.get('iterations', 1000))
 
-    m, n = X.shape
-    X_b = np.c_[np.ones((m, 1)), X]
-    theta = np.zeros(n + 1)
+        m, n = X.shape
+        X_b = np.c_[np.ones((m, 1)), X]
+        theta = np.zeros(n + 1)
 
-    cost_history = []
+        cost_history = []
 
-    for _ in range(iterations):
-        gradients = 2/m * X_b.T.dot(X_b.dot(theta) - y)
-        theta -= alpha * gradients
-        cost = ((X_b.dot(theta) - y)**2).mean()
-        cost_history.append(cost)
+        # Gradient Descent
+        for _ in range(iterations):
+            gradients = 2/m * X_b.T.dot(X_b.dot(theta) - y)
+            theta -= alpha * gradients
+            cost = ((X_b.dot(theta) - y)**2).mean()
+            cost_history.append(cost)
 
-    # Génération de la courbe d'apprentissage
-    fig, ax = plt.subplots()
-    ax.plot(range(iterations), cost_history, label='Coût')
-    ax.set_xlabel('Itérations')
-    ax.set_ylabel('Coût (Erreur)')
-    ax.set_title('Courbe d’apprentissage (Gradient Descent)')
-    ax.legend()
+        # Création de la figure de la courbe d'apprentissage
+        fig, ax = plt.subplots()
+        ax.plot(range(iterations), cost_history, label='Coût')
+        ax.set_xlabel('Itérations')
+        ax.set_ylabel('Coût (Erreur)')
+        ax.set_title('Courbe d’apprentissage (Gradient Descent)')
+        ax.legend()
 
-    # Sauvegarde dans le dossier static/
-    filename = f"{uuid.uuid4().hex}.png"
-    path = os.path.join(settings.BASE_DIR, 'mlapp/static/plots', filename)
-    plt.savefig(path)
-    plt.close()
+        # Sauvegarde de l'image
+        filename = f"{uuid.uuid4().hex}.png"
+        path = os.path.join(settings.BASE_DIR, 'mlapp/static/plots', filename)
+        plt.savefig(path)
+        plt.close()
 
-    request.session['plot_filename'] = filename
+        request.session['plot_filename'] = filename
 
-    return render(request, 'mlapp/train_model.html', {
-        'theta': theta,
-        'cost': round(cost_history[-1], 4),
-        'plot_image': f"plots/{filename}",
-    })
+        return render(request, 'mlapp/train_model.html', {
+            'theta': theta,
+            'cost': round(cost_history[-1], 4),
+            'plot_image': f"plots/{filename}",
+        })
 
+    else:
+        # Si GET, afficher la page de configuration du modèle
+        return render(request, 'mlapp/configure_model.html')
+    
 def predict_view(request):
     prediction = None  # Initialisation de la variable prédiction
 

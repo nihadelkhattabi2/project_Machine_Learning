@@ -1,2 +1,65 @@
-<h2>Matrice de corrélation</h2>
-<img src="data:image/png;base64,{{ image_uri }}" alt="Heatmap de corrélation">
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Matrice de coloration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f7f7f7;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        p {
+            font-size: 1.1em;
+            color: #555;
+            margin-bottom: 30px;
+        }
+
+        button {
+            background-color: #007BFF;
+            border: none;
+            color: white;
+            padding: 12px 25px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* L’image est cachée par défaut */
+        #heatmap-img {
+            display: none;
+            margin-top: 20px;
+            max-width: 90%;
+            height: auto;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Matrice de coloration</h1>
+    <p>Bienvenue sur la page de la matrice de coloration. Cliquez sur le bouton ci-dessous pour afficher la heatmap.</p>
+
+    <button type="button" onclick="document.getElementById('heatmap-img').style.display = 'block'">
+        Afficher la heatmap
+    </button>
+
+    <h2>Matrice de corrélation</h2>
+    <img id="heatmap-img" src="data:image/png;base64,{{ heatmap }}" alt="Heatmap de corrélation" />
+
+</body>
+
+</html>

@@ -6,7 +6,7 @@ from django.conf import settings
 from django.utils.html import escape
 import json
 
-from .preprocessing import preprocess_dataset  # <- si ta fonction est dans un fichier utils.py
+from .preprocessing import generate_correlation_heatmap, preprocess_dataset  # <- si ta fonction est dans un fichier utils.py
 # ou bien, tu l'appelles localement si elle est dans views.py
 
 def import_dataset(request):
@@ -35,50 +35,65 @@ def import_dataset(request):
         'filename': filename,
     })
 
+from django.shortcuts import render
+import pandas as pd
+
 def correlation_view(request):
-    df = get_last_uploaded_dataset()  # Charge ton DataFrame déjà importé
-    fig = plot_correlation_heatmap(df)
-    image_uri = fig_to_base64(fig)
-    return render(request, 'correlation.html', {'image_uri': image_uri})
+    # Exemple : charger un dataset (à adapter à ton cas)
+    file_path = 'chemin/vers/ton_dataset.csv'
+    df = preprocess_dataset(file_path, verbose=False)  # ta fonction de prétraitement
 
-def afficher_correlation_target(request):
-    df = get_last_uploaded_dataset()
-    columns = df.select_dtypes(include='number').columns.tolist()
+    if df is None:
+        return render(request, 'mlapp/error.html', {'message': 'Erreur chargement dataset'})
 
-    if request.method == 'POST':
-        target = request.POST.get('target_col')
-        fig = plot_correlation_with_target(df, target)
-        image_uri = fig_to_base64(fig)
-        return render(request, 'correlation_target.html', {
-            'image_uri': image_uri,
-            'target': target,
-            'columns': columns
-        })
+    heatmap_img = generate_correlation_heatmap(df)
 
-    return render(request, 'correlation_target.html', {'columns': columns})
+    return render(request, 'mlapp/correlation.html', {'heatmap': heatmap_img})
 
 
-def afficher_correlation_target(request):
-    df_json = request.session.get('dataset', None)
-    if not df_json:
-        return render(request, 'mlapp/error.html', {'message': 'Aucun dataset trouvé.'})
+    # df = get_last_uploaded_dataset()  # Charge ton DataFrame déjà importé
+    # fig = plot_correlation_heatmap(df)
+    # image_uri = fig_to_base64(fig)
+    # return render(request, 'correlation.html', {'image_uri': image_uri})
 
-    df = pd.read_json(df_json)
+# def afficher_correlation_target(request):
+#     df = get_last_uploaded_dataset()
+#     columns = df.select_dtypes(include='number').columns.tolist()
 
-    if request.method == 'POST':
-        target = request.POST.get('target_col')
+#     if request.method == 'POST':
+#         target = request.POST.get('target_col')
+#         fig = plot_correlation_with_target(df, target)
+#         image_uri = fig_to_base64(fig)
+#         return render(request, 'correlation_target.html', {
+#             'image_uri': image_uri,
+#             'target': target,
+#             'columns': columns
+#         })
 
-        try:
-            graphique = correlation_avec_cible(df, target)
-            return render(request, 'mlapp/correlation_target.html', {
-                'graphique': graphique,
-                'target': target
-            })
-        except Exception as e:
-            return render(request, 'mlapp/error.html', {'message': str(e)})
+#     return render(request, 'correlation_target.html', {'columns': columns})
 
-    columns = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
-    return render(request, 'mlapp/import_dataset.html', {'columns': columns})
+
+# def afficher_correlation_target(request):
+#     df_json = request.session.get('dataset', None)
+#     if not df_json:
+#         return render(request, 'mlapp/error.html', {'message': 'Aucun dataset trouvé.'})
+
+#     df = pd.read_json(df_json)
+
+#     if request.method == 'POST':
+#         target = request.POST.get('target_col')
+
+#         try:
+#             graphique = correlation_avec_cible(df, target)
+#             return render(request, 'mlapp/correlation_target.html', {
+#                 'graphique': graphique,
+#                 'target': target
+#             })
+#         except Exception as e:
+#             return render(request, 'mlapp/error.html', {'message': str(e)})
+
+#     columns = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+#     return render(request, 'mlapp/import_dataset.html', {'columns': columns})
 
 
 def select_features(request):

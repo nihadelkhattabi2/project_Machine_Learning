@@ -8,6 +8,11 @@ import os
 from django.conf import settings
 from django.utils.html import escape
 import json
+import matplotlib.pyplot as plt
+import io, base64
+from django.contrib import messages # pour afficher les erreurs
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 from .preprocessing import generate_correlation_heatmap, preprocess_dataset  # <- si ta fonction est dans un fichier utils.py
 # ou bien, tu l'appelles localement si elle est dans views.py
@@ -26,6 +31,8 @@ def import_dataset(request):
 
             if df is None or df.empty:
                 raise ValueError("Le dataset est vide ou mal formaté.")
+            
+            request.session['dataset'] = df.to_json()
 
             # 👁️ Aperçu du dataset nettoyé
             dataset_preview = df.head(20).to_html(classes='table', index=False)
@@ -36,10 +43,9 @@ def import_dataset(request):
     return render(request, 'mlapp/import_dataset.html', {
         'dataset_preview': dataset_preview,
         'filename': filename,
+        'request': request,
     })
 
-from django.shortcuts import render
-import pandas as pd
 
 def correlation_view(request):
     # Exemple : charger un dataset (à adapter à ton cas)
@@ -100,7 +106,14 @@ def correlation_view(request):
 
 
 def select_features(request):
-    df = pd.read_csv("media/housingCalifornia.csv")
+    # Étape 1 : Récupérer le dataset prétraité depuis la session
+    dataset_json = request.session.get('dataset', None)
+    
+    if dataset_json is None:
+        # Si aucun dataset en session, rediriger vers l'importation
+        return redirect('import_dataset')  # mets ici le nom correct de la vue d'import
+    
+    df = pd.read_json(dataset_json)
     columns = df.columns.tolist()
 
     if request.method == 'POST':
@@ -131,102 +144,103 @@ def select_features(request):
         'table': df.head().to_html(classes='table table-striped')
     })
 
-from django.shortcuts import render, redirect
-from django.contrib import messages  # pour afficher les erreurs
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+def compute_cost(X, y, theta, task_type):
+    m = len(y)
+    h = X.dot(theta)
+    if task_type == "regression":
+        return (1/(2*m)) * np.sum((h - y) ** 2)
+    elif task_type == "classification":
+        h = sigmoid(h)
+        return (-1/m) * np.sum(y*np.log(h+1e-10) + (1-y)*np.log(1 - h + 1e-10))
+    
+
+def gradient_descent(X, y, theta, alpha, iterations, task_type):
+    m = len(y)
+    cost_history = []
+
+    for _ in range(iterations):
+        if task_type == "regression":
+            h = X.dot(theta)
+            gradient = (1/m) * X.T.dot(h - y)
+        elif task_type == "classification":
+            h = sigmoid(X.dot(theta))
+            gradient = (1/m) * X.T.dot(h - y)
+        theta -= alpha * gradient
+        cost = compute_cost(X, y, theta, task_type)
+        cost_history.append(cost)
+    return theta, cost_history
+
 
 def configure_model_view(request):
     if request.method == 'POST':
-        task_type = request.POST.get('task_type')       # récupère le choix régression ou classification
-        alpha = request.POST.get('alpha')               # récupère alpha
-        iterations = request.POST.get('iterations')     # récupère le nombre d’itérations
+        task_type = request.POST.get('task_type')
+        alpha = request.POST.get('alpha')
+        iterations = request.POST.get('iterations')
 
-        # Vérifie que le choix est valide
-        if task_type not in ['regression', 'classification']:
-            messages.error(request, "Choisis un type d’apprentissage valide.")
-            return render(request, 'mlapp/configure_model.html')
-
-        # Vérifie que alpha est un nombre positif
         try:
             alpha = float(alpha)
-            if alpha <= 0:
-                raise ValueError()
-        except:
-            messages.error(request, "Le taux d’apprentissage doit être un nombre positif.")
-            return render(request, 'mlapp/configure_model.html')
-
-        # Vérifie que iterations est un entier >= 1
-        try:
             iterations = int(iterations)
-            if iterations < 1:
+            if task_type not in ['regression', 'classification'] or alpha <= 0 or iterations < 1:
                 raise ValueError()
         except:
-            messages.error(request, "Le nombre d’itérations doit être un entier positif.")
+            messages.error(request, "Entrée invalide.")
             return render(request, 'mlapp/configure_model.html')
 
-        # Tout est OK : on stocke dans la session
-        request.session['task_type'] = task_type
-        request.session['alpha'] = alpha
-        request.session['iterations'] = iterations
+        # Charger le dataset depuis la session
+        dataset_json = request.session.get('dataset', None)
+        if dataset_json is None:
+            return redirect('import_dataset')  # ou autre redirection logique
 
-        # Puis on redirige vers la page d’entraînement
-        return redirect('train_model')
+        df = pd.read_json(dataset_json)  # Assure-toi que 'dataset_path' est bien stocké en session
+        target_col = request.session['target']
+        feature_cols = request.session['features']
 
-    # Si méthode GET, on affiche juste le formulaire
-    return render(request, 'mlapp/configure_model.html')
+        X = df[feature_cols].values
+        y = df[target_col].values.reshape(-1, 1)
 
-def train_model(request):
-    if request.method == 'POST':
-        # Récupération du dataset prétraité en JSON dans la session
-        df = pd.read_json(request.session.get('preprocessed_dataset'))
-        features = request.session.get('features')
-        target = request.session.get('target')
+        # Prétraitement
+        scaler = StandardScaler()
+        X = scaler.fit_transform(X)
+        X = np.c_[np.ones(X.shape[0]), X]  # Ajouter biais
 
-        # Extraction des variables
-        X = df[features].values
-        y = df[target].values
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        # Paramètres du modèle
-        alpha = float(request.POST.get('alpha', 0.01))
-        iterations = int(request.POST.get('iterations', 1000))
+        theta = np.zeros((X.shape[1], 1))
+        theta, cost_history = gradient_descent(X_train, y_train, theta, alpha, iterations, task_type)
 
-        m, n = X.shape
-        X_b = np.c_[np.ones((m, 1)), X]
-        theta = np.zeros(n + 1)
+        # Calcul de la performance
+        y_pred = X_test.dot(theta) if task_type == "regression" else sigmoid(X_test.dot(theta)) >= 0.5
 
-        cost_history = []
+        if task_type == "regression":
+            performance = np.sqrt(np.mean((y_pred - y_test) ** 2))  # RMSE
+        else:
+            performance = np.mean(y_pred == y_test)  # Accuracy
 
-        # Gradient Descent
-        for _ in range(iterations):
-            gradients = 2/m * X_b.T.dot(X_b.dot(theta) - y)
-            theta -= alpha * gradients
-            cost = ((X_b.dot(theta) - y)**2).mean()
-            cost_history.append(cost)
+        # Courbe d'apprentissage
+        plt.figure(figsize=(8, 4))
+        plt.plot(range(1, iterations+1), cost_history, color='blue')
+        plt.title('Courbe d’apprentissage')
+        plt.xlabel('Itérations')
+        plt.ylabel('Coût (Cost)')
+        buffer = io.BytesIO()
+        plt.savefig(buffer, format='png')
+        buffer.seek(0)
+        image_png = buffer.getvalue()
+        buffer.close()
+        learning_curve = base64.b64encode(image_png).decode('utf-8')
 
-        # Création de la figure de la courbe d'apprentissage
-        fig, ax = plt.subplots()
-        ax.plot(range(iterations), cost_history, label='Coût')
-        ax.set_xlabel('Itérations')
-        ax.set_ylabel('Coût (Erreur)')
-        ax.set_title('Courbe d’apprentissage (Gradient Descent)')
-        ax.legend()
-
-        # Sauvegarde de l'image
-        filename = f"{uuid.uuid4().hex}.png"
-        path = os.path.join(settings.BASE_DIR, 'mlapp/static/plots', filename)
-        plt.savefig(path)
-        plt.close()
-
-        request.session['plot_filename'] = filename
-
-        return render(request, 'mlapp/train_model.html', {
-            'theta': theta,
-            'cost': round(cost_history[-1], 4),
-            'plot_image': f"plots/{filename}",
+        return render(request, 'mlapp/result_model.html', {
+            'performance': performance,
+            'learning_curve': learning_curve,
+            'task_type': task_type
         })
 
-    else:
-        # Si GET, afficher la page de configuration du modèle
-        return render(request, 'mlapp/configure_model.html')
+    return render(request, 'mlapp/configure_model.html')
+
     
 def predict_view(request):
     prediction = None  # Initialisation de la variable prédiction

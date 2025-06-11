@@ -69,6 +69,17 @@
             cursor: pointer;
         }
 
+        .btn-next {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background-color: #3949ff;
+            border: none;
+            border-radius: 25px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
         input[type="file"] {
             display: none;
         }
@@ -153,6 +164,13 @@
             {% if filename %}
             <p id="fileName">{{ filename }}</p>
             {% endif %}
+
+            {% if request.session.dataset %}
+            <form method="get" action="{% url 'select_features' %}">
+                <button type="submit" class="btn-next">Suivant</button>
+            </form>
+            {% endif %}
+
 
             <!-- Affichage du dataset prétraité -->
             {% if dataset_preview %}

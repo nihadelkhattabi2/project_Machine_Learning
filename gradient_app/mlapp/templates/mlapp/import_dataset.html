@@ -39,12 +39,14 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            padding: 60px;
+            padding-left: 60px;
+            padding-right: 60px;
+            padding-top: 30px;
             gap: 40px;
         }
 
         .text-section {
-            max-width: 500px;
+            max-width: 700px;
         }
 
         .text-section h1 {
@@ -162,14 +164,15 @@
 
             <!-- Nom du fichier -->
             {% if filename %}
-            <p id="fileName">{{ filename }}</p>
-            {% endif %}
-
+            <p id="fileName">Le dataset "{{ filename }}" est importé, prétraité, et prêt à être utilisé !</p>
             {% if request.session.dataset %}
             <form method="get" action="{% url 'select_features' %}">
                 <button type="submit" class="btn-next">Suivant</button>
             </form>
             {% endif %}
+            {% endif %}
+
+            
 
 
             <!-- Affichage du dataset prétraité -->
@@ -186,11 +189,6 @@
         <div class="image-section">
             <img src="{% static 'images/image2.png' %}" alt="Illustration SmartPredict">
         </div>
-
-
-
     </div>
-
 </body>
-
 </html>

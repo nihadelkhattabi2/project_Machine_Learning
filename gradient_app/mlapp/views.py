@@ -13,6 +13,8 @@ import io, base64
 from django.contrib import messages # pour afficher les erreurs
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 
 from .preprocessing import generate_correlation_heatmap, preprocess_dataset  # <- si ta fonction est dans un fichier utils.py
 # ou bien, tu l'appelles localement si elle est dans views.py
@@ -141,7 +143,7 @@ def select_features(request):
 
     return render(request, 'mlapp/select_features.html', {
         'form': form,
-        'table': df.head().to_html(classes='table table-striped')
+        'table': df.head(100).to_html(classes='table table-striped')
     })
 
 
@@ -242,23 +244,55 @@ def configure_model_view(request):
     return render(request, 'mlapp/configure_model.html')
 
     
+@csrf_exempt
 def predict_view(request):
-    prediction = None  # Initialisation de la variable prédiction
+    dataset_json = request.session.get('dataset')
+    features = request.session.get('features', [])
+    target = request.session.get('target', 'valeur')
+
+    if not dataset_json or not features or not target:
+        return JsonResponse({'error': 'Missing dataset or configuration.'})
+
+    df = pd.read_json(dataset_json)
 
     if request.method == 'POST':
         try:
-            # Récupération des valeurs envoyées par le formulaire
-            f1 = float(request.POST.get('feature1', 0))
-            f2 = float(request.POST.get('feature2', 0))
-            f3 = float(request.POST.get('feature3', 0))
+            input_data = json.loads(request.body.decode('utf-8'))
+            input_values = [float(input_data[feature]) for feature in features]
 
-            # Exemple simple de prédiction : moyenne des trois valeurs
-            X = np.array([[f1, f2, f3]])
-            prediction = round((f1 + f2 + f3) / 3, 2)
-        except:
-            # En cas d'erreur (valeur non numérique par exemple)
-            prediction = "Erreur lors de la saisie des valeurs."
+            # Mini gradient descent "maison" pour faire la prédiction
+            X = df[features].values
+            y = df[target].values
 
-    # Que la méthode soit GET ou POST, on retourne toujours la page HTML
-    return render(request, 'mlapp/predict.html', {'prediction': prediction})
+            # Normalisation
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
+            input_scaled = scaler.transform([input_values])
+
+            # Ajout de biais
+            X_b = np.c_[np.ones((X_scaled.shape[0], 1)), X_scaled]
+            theta = np.zeros(X_b.shape[1])
+
+            # Hyperparamètres
+            alpha = 0.01
+            iterations = 1000
+
+            # Entraînement simple du modèle
+            for _ in range(iterations):
+                gradients = 2 / len(X_b) * X_b.T.dot(X_b.dot(theta) - y)
+                theta -= alpha * gradients
+
+            # Prédiction
+            input_b = np.c_[np.ones((1, 1)), input_scaled]
+            prediction = float(input_b.dot(theta))
+
+            return JsonResponse({'prediction': round(prediction, 3)})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)})
+
+    return render(request, 'mlapp/predict.html', {
+        'target': target,
+        'features': json.dumps(features) #convertir features en JSON 
+    })
 

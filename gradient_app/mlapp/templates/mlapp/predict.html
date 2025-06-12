@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   {% load static %} <!-- Load static files for CSS -->
 
@@ -19,36 +20,36 @@
       max-width: 600px;
       margin: auto;
       border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
 
     nav a {
-            margin: 0 15px;
-            text-decoration: none;
-            color: #555;
-            font-weight: 500;
-      
-      }
+      margin: 0 15px;
+      text-decoration: none;
+      color: #555;
+      font-weight: 500;
 
-      header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #fff;
-            padding: 20px 60px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-      }
+    }
 
-      header .logo {
-            font-weight: bold;
-            font-size: 24px;
-            color: #333;
-      }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #fff;
+      padding: 20px 60px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
 
-      .container {
-            padding: 40px 60px;
-            margin-top: 20px;
-      }
+    header .logo {
+      font-weight: bold;
+      font-size: 24px;
+      color: #333;
+    }
+
+    .container {
+      padding: 40px 60px;
+      margin-top: 20px;
+    }
 
     h2 {
       text-align: center;
@@ -88,19 +89,183 @@
     }
   </style>
 </head>
+
 <body>
   <!-- Barre de navigation -->
+  <header>
+    <div class="logo">SmartPredict</div>
+    <nav>
+      <a href="#">Guide</a>
+      <a href="/correlation">Matrice de corrélation</a>
+    </nav>
+  </header>
+  <!DOCTYPE html>
+  <html lang="en">
+
+  <head>
+    {% load static %} <!-- Load static files for CSS -->
+
+    <meta charset="UTF-8">
+    <title>Prediction</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #9487e0;
+        margin: 0;
+      }
+
+      .container {
+        background: white;
+        padding: 30px;
+        max-width: 600px;
+        margin: auto;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+
+      nav a {
+        margin: 0 15px;
+        text-decoration: none;
+        color: #555;
+        font-weight: 500;
+
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #fff;
+        padding: 20px 60px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      }
+
+      header .logo {
+        font-weight: bold;
+        font-size: 24px;
+        color: #333;
+      }
+
+      .container {
+        padding: 40px 60px;
+        margin-top: 20px;
+      }
+
+      h2 {
+        text-align: center;
+        color: #333;
+      }
+
+      label {
+        display: block;
+        margin-top: 15px;
+      }
+
+      input[type="number"] {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+      }
+
+      button {
+        margin-top: 20px;
+        width: 100%;
+        padding: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+
+      #result {
+        margin-top: 20px;
+        font-weight: bold;
+        color: green;
+        text-align: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Barre de navigation -->
     <header>
-        <div class="logo">SmartPredict</div>
-        <nav>
-            <a href="#">Guide</a>
-            <a href="/correlation">Matrice de corrélation</a>
-        </nav>
+      <div class="logo">SmartPredict</div>
+      <nav>
+        <a href="#">Guide</a>
+        <a href="/correlation">Matrice de corrélation</a>
+      </nav>
     </header>
 
+    <div class="container">
+      <h2>Prediction Interface</h2>
+
+      <form id="predictionForm">
+        <div id="featureInputs">
+          <!-- Les champs seront ajoutés ici dynamiquement -->
+        </div>
+        <button type="submit">Prédiction</button>
+      </form>
+
+      <div id="result"></div>
+    </div>
+
+    <script>
+      const target = "{{ target }}";
+      const features = {{ features| safe }}; // erreur de l'éditeur à ignorer
+
+      const container = document.getElementById('featureInputs');
+      features.forEach((feature, idx) => {
+        const label = document.createElement('label');
+        label.setAttribute('for', feature);
+        label.innerText = feature;
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.name = feature;
+        input.id = feature;
+        input.step = 'any';
+        input.required = true;
+
+        container.appendChild(label);
+        container.appendChild(input);
+      });
+
+      document.getElementById('predictionForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const formData = {};
+        features.forEach(feature => {
+          formData[feature] = document.getElementById(feature).value;
+        });
+
+        const response = await fetch("{% url 'predict_view' %}", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+          },
+          body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+        if (result.prediction !== undefined) {
+          document.getElementById('result').innerText = 'Valeur prédite (' + target + ') : ' + result.prediction;
+        } else {
+          document.getElementById('result').innerText = 'Erreur : ' + result.error;
+        }
+      });
+    </script>
+  </body>
+
+  </html>
   <div class="container">
     <h2>Prediction Interface</h2>
-    
+
     <form id="predictionForm">
       <div id="featureInputs">
         <!-- Les champs seront ajoutés ici dynamiquement -->
@@ -113,7 +278,7 @@
 
   <script>
     const target = "{{ target }}";
-    const features = {{ features|safe }}; // erreur de l'éditeur à ignorer
+    const features = {{ features| safe }}; // erreur de l'éditeur à ignorer
 
     const container = document.getElementById('featureInputs');
     features.forEach((feature, idx) => {
@@ -132,7 +297,7 @@
       container.appendChild(input);
     });
 
-    document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+    document.getElementById('predictionForm').addEventListener('submit', async function (e) {
       e.preventDefault();
 
       const formData = {};
@@ -158,4 +323,5 @@
     });
   </script>
 </body>
+
 </html>

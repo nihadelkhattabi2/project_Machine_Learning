@@ -7,6 +7,7 @@ from .forms import FeatureSelectionForm
 import os
 from django.conf import settings
 from django.utils.html import escape
+import seaborn as sns
 import json
 import matplotlib.pyplot as plt
 import io, base64
@@ -16,7 +17,7 @@ from sklearn.preprocessing import StandardScaler
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 
-from .preprocessing import generate_correlation_heatmap, preprocess_dataset  # <- si ta fonction est dans un fichier utils.py
+from .preprocessing import generate_correlation_heatmap, preprocess_dataset, preprocess_dataset_without_normalization  # <- si ta fonction est dans un fichier utils.py
 # ou bien, tu l'appelles localement si elle est dans views.py
 
 def import_dataset(request):
@@ -28,16 +29,26 @@ def import_dataset(request):
         filename = file.name
 
         try:
-            # 🎯 Appel direct au prétraitement
-            df = preprocess_dataset(file, verbose=True)
 
-            if df is None or df.empty:
-                raise ValueError("Le dataset est vide ou mal formaté.")
+            # Lire le dataset brut depuis le fichier uploadé
+            df_brut = pd.read_csv(file)
+
+            # Stocker le dataset brut dans la session en JSON
+            request.session['dataset_brut'] = df_brut.to_json()
+
+
+            # Appeler la fonction de prétraitement sur le DataFrame brut
+            df_prep = preprocess_dataset(df_brut, verbose=True)
+
+            if df_prep is None or df_prep.empty:
+                raise ValueError("Le dataset est vide ou mal formaté après prétraitement.")
             
-            request.session['dataset'] = df.to_json()
+             # Stocker le dataset prétraité aussi dans la session
+            request.session['dataset'] = df_prep.to_json()
 
-            # 👁️ Aperçu du dataset nettoyé
-            dataset_preview = df.head(20).to_html(classes='table', index=False)
+            # Afficher un aperçu du dataset prétraité
+            dataset_preview = df_prep.head(20).to_html(classes='table', index=False)
+
 
         except Exception as e:
             dataset_preview = f"<p style='color:red;'>Erreur : {escape(str(e))}</p>"
@@ -46,42 +57,102 @@ def import_dataset(request):
         'dataset_preview': dataset_preview,
         'filename': filename,
         'request': request,
+
     })
 
 
+
 def correlation_view(request):
-    # Exemple : charger un dataset (à adapter à ton cas)
-    file_path = 'chemin/vers/ton_dataset.csv'
-    df = preprocess_dataset(file_path, verbose=False)  # ta fonction de prétraitement
+    # Vérifier si le dataset est dans la session
+    dataset_json = request.session.get('dataset', None)
+    if dataset_json is None:
+        return render(request, 'correlation.html', {
+            'heatmap': None,
+            'error': "Aucun dataset trouvé. Merci d'importer un dataset d'abord."
+        })
 
-    if df is None:
-        return render(request, 'mlapp/error.html', {'message': 'Erreur chargement dataset'})
+    # Charger le dataset depuis la session
+    df = pd.read_json(dataset_json)
 
-    heatmap_img = generate_correlation_heatmap(df)
+    # Calculer la matrice de corrélation
+    corr = df.corr()
 
-    return render(request, 'mlapp/correlation.html', {'heatmap': heatmap_img})
+    # Créer la figure matplotlib
+    plt.figure(figsize=(20,10))
+    sns.heatmap(corr, annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5)
+    plt.tight_layout()
 
+    # Sauvegarder l’image dans un buffer
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    plt.close()
+    buffer.seek(0)
 
-    # df = get_last_uploaded_dataset()  # Charge ton DataFrame déjà importé
-    # fig = plot_correlation_heatmap(df)
-    # image_uri = fig_to_base64(fig)
-    # return render(request, 'correlation.html', {'image_uri': image_uri})
+    # Encoder l’image en base64
+    image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
-# def afficher_correlation_target(request):
-#     df = get_last_uploaded_dataset()
-#     columns = df.select_dtypes(include='number').columns.tolist()
+    # Passer l’image à ton template
+    return render(request, 'mlapp/correlation.html', {'heatmap': image_base64})
 
-#     if request.method == 'POST':
-#         target = request.POST.get('target_col')
-#         fig = plot_correlation_with_target(df, target)
-#         image_uri = fig_to_base64(fig)
-#         return render(request, 'correlation_target.html', {
-#             'image_uri': image_uri,
-#             'target': target,
-#             'columns': columns
-#         })
+import pandas as pd
+from django.shortcuts import render
+from io import StringIO
+import json
 
-#     return render(request, 'correlation_target.html', {'columns': columns})
+import pandas as pd
+import json
+import pandas as pd
+import io
+
+import re
+import io
+
+def parse_info(df):
+    info_list = []
+    buffer = io.StringIO()
+    df.info(buf=buffer)
+    info_str = buffer.getvalue()
+
+    lines = info_str.splitlines()
+    for line in lines:
+        if re.match(r'^\s*\d+\s+\S+', line):
+            parts = line.split()
+            if len(parts) >= 5:
+                idx = parts[0]
+                non_null = parts[-3]
+                dtype = parts[-1]
+                column_name = ' '.join(parts[1:-3])
+                info_list.append({
+                    'index': idx,
+                    'column': column_name,
+                    'non_null': non_null,
+                    'dtype': dtype
+                })
+    return info_list
+def afficher_statistiques(request):
+    dataset_json = request.session.get('dataset_brut')  # dataset AVANT prétraitement
+
+    if not dataset_json:
+        return render(request, 'mlapp/afficher_statistiques.html', {
+            'error': "Aucun dataset trouvé. Veuillez importer un fichier d'abord."
+        })
+
+    df = pd.read_json(dataset_json)
+
+    info_rows = parse_info(df)
+
+    stats_html = df.describe().to_html(classes="table table-striped")
+
+    numeric_columns = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+    categorical_columns = df.select_dtypes(include=['object']).columns.tolist()
+
+    return render(request, 'mlapp/afficher_statistiques.html', {
+        'info_rows': info_rows,
+        'stats_html': stats_html,
+        'numeric_columns': numeric_columns,
+        'categorical_columns': categorical_columns
+    })
+
 
 
 # def afficher_correlation_target(request):

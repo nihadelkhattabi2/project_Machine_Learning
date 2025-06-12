@@ -47,6 +47,7 @@ def one_hot_encode(df, verbose=False):
     if categorical_cols:
         if verbose:
             print(f"Colonnes catégorielles encodées : {categorical_cols}")
+            
         df_encoded = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
         return df_encoded
     else:
@@ -55,58 +56,28 @@ def one_hot_encode(df, verbose=False):
         return df
     
 
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-def generate_correlation_heatmap(file_path, verbose=True):
+def generate_correlation_heatmap(df, taille=(20, 10), annot=True, cmap="coolwarm", title="Matrice de corrélation"):
     """
-    Charge un dataset CSV, le prétraite,
-    puis génère une heatmap de corrélation et renvoie l'image en base64.
-    
+    Affiche une heatmap de la matrice de corrélation d'un DataFrame.
+
     Args:
-        file_path (str): chemin vers le fichier CSV.
-        verbose (bool): affiche des infos pendant le traitement.
-
-    Returns:
-        str: image PNG encodée en base64, ou None en cas d'erreur.
+        df (pd.DataFrame): Le DataFrame à analyser.
+        taille (tuple): Taille de la figure (largeur, hauteur).
+        annot (bool): Affiche les coefficients de corrélation sur la heatmap.
+        cmap (str): Palette de couleurs.
+        title (str): Titre de la heatmap.
     """
-    try:
-        # Chargement du dataset
-        df = pd.read_csv(file_path)
-
-
-        # Prétraitement (fonctions à définir ailleurs)
-        df = remplir_valeurs_vides(df)
-        df = supprimer_doublons(df)
-        df = one_hot_encode(df, verbose=verbose)
-
-
-
-        # Garder que les colonnes numériques pour corrélation
-        numeric_df = df.select_dtypes(include=['number'])
-
-        # Calcul de la matrice de corrélation
-        corr = numeric_df.corr()
-
-        # Génération de la heatmap
-        plt.figure(figsize=(10, 8))
-        sns.heatmap(corr, annot=True, fmt=".2f", cmap='coolwarm', linewidths=0.5)
-        plt.title('Matrice de corrélation')
-        plt.tight_layout()
-
-        # Sauvegarde dans un buffer en PNG
-        buffer = io.BytesIO()
-        plt.savefig(buffer, format='png')
-        buffer.seek(0)
-        image_png = buffer.getvalue()
-        buffer.close()
-        plt.close()
-
-        # Encodage base64
-        graphic = base64.b64encode(image_png).decode('utf-8')
-        return graphic
-
-    except Exception as e:
-        print(f"❌ Erreur : {e}")
-        return None
+    corr = df.corr()
+    plt.figure(figsize=taille)
+    sns.heatmap(data=corr, annot=annot, cmap=cmap, fmt=".2f", linewidths=0.5)
+    plt.title(title)
+    plt.xticks(rotation=45)
+    plt.yticks(rotation=0)
+    plt.tight_layout()
+    plt.show()
 
 
 
@@ -116,15 +87,33 @@ def min_max_normalisation(df):
     numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns
     df[numeric_cols] = (df[numeric_cols] - df[numeric_cols].min()) / (df[numeric_cols].max() - df[numeric_cols].min())
     return df
-
-
-def preprocess_dataset(file_path, verbose=True):
+def convertir_booleens(df, verbose=False):
     """
-    Charge et prétraite un dataset CSV :
-    - Remplit les valeurs manquantes
-    - Supprime les doublons
-    - Encode les variables catégorielles
+    Convertit les colonnes contenant des valeurs booléennes (True/False)
+    ou chaînes de texte 'true'/'false' en 0 et 1.
+
+    Args:
+        df (pd.DataFrame): Le DataFrame à traiter.
+        verbose (bool): Affiche les colonnes converties si True.
+
+    Returns:
+        pd.DataFrame: Le DataFrame modifié.
     """
+    for col in df.columns:
+        if df[col].dtype == 'bool':
+            df[col] = df[col].astype(int)
+            if verbose:
+                print(f"Colonne booléenne convertie : {col}")
+        elif df[col].dtype == 'object':
+            valeurs_uniques = df[col].dropna().unique()
+            valeurs_bools = set(str(val).lower() for val in valeurs_uniques)
+            if valeurs_bools.issubset({'true', 'false'}):
+                df[col] = df[col].str.lower().map({'true': 1, 'false': 0})
+                if verbose:
+                    print(f"Colonne texte booléenne convertie : {col}")
+    return df
+
+def preprocess_dataset_without_normalization(file_path, verbose=True):
     try:
         df = pd.read_csv(file_path)
 
@@ -133,16 +122,12 @@ def preprocess_dataset(file_path, verbose=True):
             print(f"Forme initiale : {df.shape}")
             print("\nAperçu du dataset :")
             print(df.head())  # ⬅️ Afficher le dataset d'abord
-
+        
+        
         df = remplir_valeurs_vides(df)
         df = supprimer_doublons(df)
         df = one_hot_encode(df, verbose=verbose)
-        
-        df = min_max_normalisation(df)  #  normalisation des _features
-        
-
-
-       # afficher_correlation_avec_target(df, verbose=True)
+        df = convertir_booleens(df, verbose=verbose) 
 
         if verbose:
             print(f"Forme finale : {df.shape}")
@@ -152,7 +137,36 @@ def preprocess_dataset(file_path, verbose=True):
     except Exception as e:
         print(f"❌ Erreur pendant le prétraitement : {e}")
         return None
-    
+def preprocess_dataset(df, verbose=True):
+    """
+    Prend un DataFrame déjà chargé et fait le prétraitement :
+    - Remplit les valeurs manquantes
+    - Supprime les doublons
+    - Encode les variables catégorielles
+    - Normalise les features
+    """
+    try:
+        if verbose:
+            print("✅ Dataset reçu.")
+            print(f"Forme initiale : {df.shape}")
+            print("\nAperçu du dataset :")
+            print(df.head())  # Affiche le dataset d'abord
+
+        df = remplir_valeurs_vides(df)
+        df = supprimer_doublons(df)
+        df = one_hot_encode(df, verbose=verbose)
+        df = convertir_booleens(df, verbose=verbose)
+        df = min_max_normalisation(df)  # Normalisation
+        
+
+        if verbose:
+            print(f"Forme finale : {df.shape}")
+
+        return df
+
+    except Exception as e:
+        print(f"❌ Erreur pendant le prétraitement : {e}")
+        return None
 
 
 
@@ -194,3 +208,7 @@ def split_dataset(dataset, target_column='target', train_size=0.7, random_state=
         X, y, train_size=train_size, random_state=random_state
     )
     return X_train, X_test, y_train, y_test
+
+
+
+

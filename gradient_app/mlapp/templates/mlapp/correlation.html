@@ -3,63 +3,113 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Matrice de coloration</title>
+    <title>Matrice de corrélation</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f7f7f7;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f1effc;
             text-align: center;
         }
 
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #fff;
+            padding: 20px 60px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        header .logo {
+            font-weight: bold;
+            font-size: 24px;
+            color: #9487e0;
+        }
+
+        nav a {
+            margin: 0 15px;
+            text-decoration: none;
+            color: #9487e0;
+            font-weight: 500;
+        }
+
+        nav a:hover {
+            color: #9487e0;
+        }
+
         h1 {
+            margin-top: 40px;
             color: #333;
         }
 
         p {
-            font-size: 1.1em;
-            color: #555;
-            margin-bottom: 30px;
+            color: #666;
         }
 
-        button {
-            background-color: #007BFF;
-            border: none;
-            color: white;
-            padding: 12px 25px;
-            font-size: 1em;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        /* L’image est cachée par défaut */
         #heatmap-img {
             display: none;
             margin-top: 20px;
             max-width: 90%;
             height: auto;
             border: 1px solid #ccc;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background-color: #6c5fb8;
+            border: none;
+            border-radius: 25px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #b0a5f0;
+        }
+
+        .error-message {
+            color: red;
+            font-weight: bold;
+            margin-top: 20px;
         }
     </style>
 </head>
 
 <body>
 
-    <h1>Matrice de coloration</h1>
-    <p>Bienvenue sur la page de la matrice de coloration. Cliquez sur le bouton ci-dessous pour afficher la heatmap.</p>
+    <!-- Barre de navigation -->
+    <header>
+        <div class="logo">SmartPredict</div>
+        <nav>
+            <a href="#">Guide</a>
+            <a href="/correlation">Matrice de corrélation</a>
+        </nav>
+    </header>
 
-    <button type="button" onclick="document.getElementById('heatmap-img').style.display = 'block'">
-        Afficher la heatmap
-    </button>
+    <!-- Contenu principal -->
+    <h1>Matrice de corrélation</h1>
+    <p>Une matrice de corrélation est un tableau carré qui montre le niveau de corrélation (c’est-à-dire la relation
+        statistique) entre plusieurs variables numériques d’un dataset.</p>
 
-    <h2>Matrice de corrélation</h2>
+    {% if heatmap %}
+    <button onclick="toggleHeatmap()">Afficher / Masquer la heatmap</button>
+    <br />
     <img id="heatmap-img" src="data:image/png;base64,{{ heatmap }}" alt="Heatmap de corrélation" />
+    {% else %}
+    <p class="error-message">{{ error|default:"Aucune heatmap disponible." }}</p>
+    {% endif %}
 
+    <script>
+        function toggleHeatmap() {
+            const img = document.getElementById('heatmap-img');
+            img.style.display = (img.style.display === 'block') ? 'none' : 'block';
+        }
+    </script>
 </body>
 
 </html>

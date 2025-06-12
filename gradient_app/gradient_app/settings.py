@@ -55,7 +55,7 @@ ROOT_URLCONF = 'gradient_app.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS':  [BASE_DIR / 'gradient_app/mlapp/templates'], 
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

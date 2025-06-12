@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
   <meta charset="UTF-8">
   <title>Résultats du Modèle</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f0f2f5;
+      background-color: #f1effc;
       margin: 0;
-      
+
     }
 
     .container {
@@ -22,32 +23,32 @@
     }
 
     nav a {
-            margin: 0 15px;
-            text-decoration: none;
-            color: #555;
-            font-weight: 500;
-      
-      }
+      margin: 0 15px;
+      text-decoration: none;
+      color: #555;
+      font-weight: 500;
 
-      header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #fff;
-            padding: 20px 60px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-      }
+    }
 
-      header .logo {
-            font-weight: bold;
-            font-size: 24px;
-            color: #333;
-      }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #fff;
+      padding: 20px 60px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
 
-      .container {
-            padding: 40px 60px;
-            margin-top: 2px;
-      }
+    header .logo {
+      font-weight: bold;
+      font-size: 24px;
+      color: #333;
+    }
+
+    .container {
+      padding: 40px 60px;
+      margin-top: 2px;
+    }
 
     h2 {
       color: #333;
@@ -78,7 +79,7 @@
 
     button {
       margin-top: 30px;
-      background-color: #007bff;
+      background-color: #6c5fb8;
       color: white;
       padding: 12px 24px;
       font-size: 16px;
@@ -89,7 +90,7 @@
     }
 
     button:hover {
-      background-color: #0056b3;
+      background-color: #b0a5f0;
     }
 
     a {
@@ -97,15 +98,16 @@
     }
   </style>
 </head>
+
 <body>
   <!-- Barre de navigation -->
-    <header>
-        <div class="logo">SmartPredict</div>
-        <nav>
-            <a href="#">Guide</a>
-            <a href="/correlation">Matrice de corrélation</a>
-        </nav>
-    </header>
+  <header>
+    <div class="logo">SmartPredict</div>
+    <nav>
+      <a href="#">Guide</a>
+      <a href="/correlation">Matrice de corrélation</a>
+    </nav>
+  </header>
 
   <div class="container">
     <h2>Résultats du modèle – {{ task_type|title }}</h2>
@@ -117,4 +119,5 @@
     <a href="{% url 'predict_view' %}"><button>Aller à la Prédiction</button></a>
   </div>
 </body>
+
 </html>
